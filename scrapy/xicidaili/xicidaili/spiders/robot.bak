@@ -1,0 +1,33 @@
+# -*- coding: utf-8 -*-
+import scrapy
+from scrapy.linkextractors import LinkExtractor
+from scrapy.spiders import CrawlSpider, Rule
+from xicidaili.items import XicidailiItem
+
+
+class RobotSpider(CrawlSpider):
+    name = 'robot'
+    allowed_domains = ['www.xicidaili.com']
+    start_urls = ['https://www.xicidaili.com/nn/1']
+
+    rules = (
+        Rule(LinkExtractor(allow=r'^https://www.xicidaili.com/nn/[1-9]?$'), callback='parse_item', follow=True),
+    )
+
+    def parse_item(self, response):
+        item = XicidailiItem() 
+        host_list = response.xpath('//table[@id="ip_list"]//tr[@class="odd" or @class=""]/td[2]/text()').extract()
+        port_list = response.xpath('//table[@id="ip_list"]//tr[@class="odd" or @class=""]/td[3]/text()').extract()
+        type_list = response.xpath('//table[@id="ip_list"]//tr[@class="odd" or @class=""]/td[6]/text()').extract()
+        for (proxy_host, proxy_port, proxy_type) in zip(host_list, port_list, type_list):
+            proxies = {proxy_type: proxy_host+proxy_port}
+            try:
+                rsp = request.get('http://www.baidu.com/', proxies=proxies, timeout=5)
+                print(rsp.status_code)
+                if rsp.status_code == 200:
+                    item['proxy_info'] = proxy_type + '://' + proxy_host + ':' + proxy_port
+                    print("Success: " + item['proxy_info'])
+                    yield item
+            except:
+                print("Fail: " + proxy_host)
+
